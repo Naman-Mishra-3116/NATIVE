@@ -1,6 +1,9 @@
+import { useAuth } from "@/context/AuthContext";
 import { Text, View } from "react-native";
+import { Button } from "react-native-paper";
 
 const Login: React.FC = () => {
+  const { signout } = useAuth();
   return (
     <View
       style={{
@@ -9,7 +12,10 @@ const Login: React.FC = () => {
         alignItems: "center",
       }}
     >
-      <Text>Hello from login screen</Text>
+      <Text>Logout Page</Text>
+      <Button onPress={signout} mode="contained">
+        Logout
+      </Button>
     </View>
   );
 };
