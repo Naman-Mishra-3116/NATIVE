@@ -1,6 +1,8 @@
 import AuthContext, { useAuth } from "@/context/AuthContext";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
+import { PaperProvider } from "react-native-paper";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 interface GuardType {
   children: React.ReactNode;
@@ -30,11 +32,15 @@ const RouteGuard: React.FC<GuardType> = ({ children }) => {
 export default function RootLayout() {
   return (
     <AuthContext>
-      <RouteGuard>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
-      </RouteGuard>
+      <PaperProvider>
+        <SafeAreaProvider>
+          <RouteGuard>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+          </RouteGuard>
+        </SafeAreaProvider>
+      </PaperProvider>
     </AuthContext>
   );
 }
