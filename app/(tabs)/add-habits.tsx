@@ -41,7 +41,8 @@ const AddHabitScreen = () => {
           createdAt: new Date().toISOString(),
         }
       );
-
+      setTitle("");
+      setDesc("");
       router.back();
     } catch (error) {
       if (error instanceof Error) {
@@ -56,6 +57,7 @@ const AddHabitScreen = () => {
   return (
     <View style={styles.container}>
       <TextInput
+        value={title}
         label={"Title"}
         mode="outlined"
         underlineColor="gray"
@@ -65,6 +67,7 @@ const AddHabitScreen = () => {
         onChangeText={setTitle}
       />
       <TextInput
+        value={desc}
         label={"Description"}
         mode="outlined"
         underlineColor="gray"

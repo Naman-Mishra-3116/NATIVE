@@ -4,18 +4,21 @@ import {
   DATABASE_ID,
   databases,
   HABIT_COLLECTION_ID,
+  HABIT_COMPLETION_ID,
 } from "@/lib/appwrite";
 import { Habit } from "@/types/database.type";
 
 import AntDesign from "@expo/vector-icons/AntDesign";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { Query } from "react-native-appwrite";
+import { ID, Query } from "react-native-appwrite";
+import { Swipeable } from "react-native-gesture-handler";
 import { Button, Surface, Text } from "react-native-paper";
 
 export default function Index() {
-  const { user } = useAuth();
+  const swipableRef = useRef<{ [key: string]: Swipeable | null }>({});
+  const { user, signout } = useAuth();
   const [resp, setResp] = useState<Habit[]>();
   const fetchAllHabits = async () => {
     try {
@@ -32,7 +35,7 @@ export default function Index() {
 
   useEffect(() => {
     if (user) {
-      const channel = `databases.${DATABASE_ID}.collections.${HABIT_COLLECTION_ID}`;
+      const channel = `databases.${DATABASE_ID}.collections.${HABIT_COLLECTION_ID}.documents`;
       const habitSubscription = client.subscribe(
         channel,
         (response: { events: string[]; payload: any }) => {
@@ -63,6 +66,60 @@ export default function Index() {
       };
     }
   }, [user]);
+
+  const handleDeleteHabit = async (id: string) => {
+    try {
+      await databases.deleteDocument(DATABASE_ID, HABIT_COLLECTION_ID, id);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleCompleteHabit = async (id: string) => {
+    if (!user) return;
+    try {
+      await databases.createDocument(
+        DATABASE_ID,
+        HABIT_COMPLETION_ID,
+        ID.unique(),
+        {
+          habitId: id,
+          userId: user.$id,
+          completedAt: new Date().toISOString(),
+        }
+      );
+      const habit = resp?.find((h) => h.$id === id);
+      if (!habit) return;
+
+      await databases.updateDocument(DATABASE_ID, HABIT_COLLECTION_ID, id, {
+        streakCount: habit.streakCount + 1,
+        lastCompleted: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const renderRightAction = () => (
+    <View style={classes.right}>
+      <MaterialCommunityIcons
+        name="check-circle-outline"
+        size={32}
+        color={"#fff"}
+      />
+    </View>
+  );
+
+  const renderLeftAction = () => (
+    <View style={classes.left}>
+      <MaterialCommunityIcons
+        name="trash-can-outline"
+        size={32}
+        color={"#fff"}
+      />
+    </View>
+  );
+
   return (
     <View style={classes.container}>
       <View style={classes.header}>
@@ -72,7 +129,7 @@ export default function Index() {
         >
           Today&apos;s Habits
         </Text>
-        <Button>
+        <Button onPress={signout}>
           <View style={{ display: "flex", flexDirection: "row", gap: "10" }}>
             <AntDesign name="logout" size={20} color="black" />
             <Text style={{ color: "black" }}>Sign out</Text>
@@ -87,30 +144,50 @@ export default function Index() {
         ) : (
           resp?.map((item, index) => {
             return (
-              <Surface key={index} style={classes.card} elevation={1}>
-                <View style={classes.cardContent}>
-                  <Text style={classes.cardTitle}>{item.title}</Text>
-                  <Text style={classes.cardDesc}>{item.description}</Text>
-                  <View style={classes.cardFooter}>
-                    <View style={classes.streakBadge}>
-                      <MaterialCommunityIcons
-                        name="fire"
-                        size={18}
-                        color={"#ff9800"}
-                      />
-                      <Text style={classes.streakText}>
-                        {item.streakCount} Day streak
-                      </Text>
-                    </View>
-                    <View style={classes.freqBadge}>
-                      <Text style={classes.freqText}>
-                        {item.frequency.charAt(0).toUpperCase() +
-                          item.frequency.slice(1)}
-                      </Text>
+              <Swipeable
+                onSwipeableOpen={(direction) => {
+                  if (direction === "right") {
+                    handleDeleteHabit(item.$id);
+                  } else if (direction === "left") {
+                    handleCompleteHabit(item.$id);
+                  }
+
+                  swipableRef.current[item.$id]?.close();
+                }}
+                key={index}
+                overshootLeft={false}
+                overshootRight={false}
+                renderRightActions={renderLeftAction}
+                renderLeftActions={renderRightAction}
+                ref={(ref) => {
+                  swipableRef.current[item.$id] = ref;
+                }}
+              >
+                <Surface style={classes.card} elevation={1}>
+                  <View style={classes.cardContent}>
+                    <Text style={classes.cardTitle}>{item.title}</Text>
+                    <Text style={classes.cardDesc}>{item.description}</Text>
+                    <View style={classes.cardFooter}>
+                      <View style={classes.streakBadge}>
+                        <MaterialCommunityIcons
+                          name="fire"
+                          size={18}
+                          color={"#ff9800"}
+                        />
+                        <Text style={classes.streakText}>
+                          {item.streakCount} Day streak
+                        </Text>
+                      </View>
+                      <View style={classes.freqBadge}>
+                        <Text style={classes.freqText}>
+                          {item.frequency.charAt(0).toUpperCase() +
+                            item.frequency.slice(1)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              </Surface>
+                </Surface>
+              </Swipeable>
             );
           })
         )}
@@ -201,5 +278,27 @@ const classes = StyleSheet.create({
     textTransform: "capitalize",
     fontWeight: "bold",
     fontSize: 14,
+  },
+
+  left: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+    flex: 1,
+    backgroundColor: "#e53935",
+    borderRadius: 18,
+    marginBottom: 18,
+    marginTop: 2,
+    paddingRight: 16,
+  },
+
+  right: {
+    justifyContent: "center",
+    alignItems: "flex-start",
+    flex: 1,
+    backgroundColor: "#4caf50",
+    borderRadius: 18,
+    marginBottom: 18,
+    marginTop: 2,
+    paddingLeft: 16,
   },
 });

@@ -9,4 +9,7 @@ export const account = new Account(client);
 export const databases = new Databases(client);
 
 export const DATABASE_ID = process.env.EXPO_PUBLIC_DB_ID!;
-export const HABIT_COLLECTION_ID = process.env.EXPO_PUBLIC_HABITS_COLLECTION_ID!;
+export const HABIT_COLLECTION_ID =
+  process.env.EXPO_PUBLIC_HABITS_COLLECTION_ID!;
+export const HABIT_COMPLETION_ID =
+  process.env.EXPO_PUBLIC_HABIT_COMPLETION_COLLECTION_ID!;
